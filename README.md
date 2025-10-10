@@ -1,4 +1,4 @@
-# FocalTransNet: A Hybrid Focal-Enhanced Transformer Network for Medical Image Segmentation
+# 🔬 FocalTransNet: A Hybrid Focal-Enhanced Transformer Network for Medical Image Segmentation
 
 [![Paper](https://img.shields.io/badge/Paper-IEEE%20TIP%20\(accepted\)-blue)](#-citation)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -6,18 +6,22 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-1.13.1+-red)](#-installation)
 
 <p align="center">
-  <img src="figs/fig1.jpg" width="100%" alt="FocalTransNet overview">
+  <img src="figs\Overview.jpg" width="100%" alt="FocalTransNet overview">
 </p>
 
 ---
 
-## ✨ Overview
+## ✨  Innovations
 
 **FocalTransNet** is a hybrid CNN–Transformer segmentation network designed for high-precision medical image segmentation. It features:
-
 * **Focal-Enhanced (FE) Transformer**: a dual-path module that fuses global self-attention and local convolution with dense cross-connections.
 * **Symmetric Patch Merging (SPM)**: a downsampling module with an information-compensation mechanism to preserve fine-grained details (edges, thin structures) during downsampling.
-* **Cascaded decoder** with Attention Gates (AG) + Convolutional Attention Module (CAM).
+
+<br>
+
+<p align="center">
+  <img src="figs\Innovations.png" width="100%" alt="FocalTransNet overview">
+</p>
 
 ---
 
