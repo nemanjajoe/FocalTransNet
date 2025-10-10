@@ -251,12 +251,12 @@ class FocalModulation(nn.Module):
         return x_out
 
 
-class FocalEnhancedBlock(nn.Module):
+class FocalEnhancedTransformer(nn.Module):
     def __init__(self,dim, res, split_size, num_heads) -> None:
         super().__init__()
         dim= dim//2
-        self.block_h = CSWinAttention(dim,res,num_heads,split_size)
-        self.block_l = nn.Sequential(
+        self.SA = CSWinAttention(dim,res,num_heads,split_size)
+        self.FA = nn.Sequential(
             nn.LayerNorm(dim),
             Rearrange("b (h w) c -> b h w c",h=res,w=res),
             FocalModulation(dim=dim),
@@ -280,8 +280,8 @@ class FocalEnhancedBlock(nn.Module):
         # print(self.res**2, x_h.shape[1])
         assert(self.res*self.res == x1.shape[1]) # H*W == L
         assert(self.res*self.res == x2.shape[1]) # H*W == L
-        att1 = self.block_h(x1)
-        att2 = self.block_l(x2)
+        att1 = self.FA(x1)
+        att2 = self.SA(x2)
         t1,t2 = self.le(att1,x1,att2,x2)
         x1,x2 = self.ae(t1,att1,t2,att2)
         
@@ -336,6 +336,6 @@ class SymmetricPatchMerge(nn.Module):
         x1 = self.urds0(x)
         x2 = self.urds1(x)
 
-        return (x1 - x2).detach(), x1 + x2
+        return x1 - x2, x1 + x2
 
 

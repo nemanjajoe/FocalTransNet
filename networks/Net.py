@@ -2,9 +2,8 @@ import torch
 import torch.nn as nn
 
 from einops.layers.torch import Rearrange
-from .blocks import FocalEnhancedBlock as Block,SymmetricPatchMerge
+from .blocks import FocalEnhancedTransformer as FETransformer,SymmetricPatchMerge
 from .decoders import Decoder
-from thop import profile, clever_format
 
 
 class EncoderStage(nn.Module):
@@ -14,7 +13,7 @@ class EncoderStage(nn.Module):
                                        scale_factor=scale_factor,device=device)
         res = res//scale_factor
         self.blocks = nn.ModuleList(
-            [Block(dim_out,res,split_size,num_heads) for _ in range(depth)]
+            [FETransformer(dim_out,res,split_size,num_heads) for _ in range(depth)]
         )
         self.img2token = Rearrange("b c h w -> b (h w) c")
         self.token2img = Rearrange("b (h w) c -> b c h w", h=res,w=res)

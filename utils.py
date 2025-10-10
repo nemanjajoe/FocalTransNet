@@ -206,6 +206,20 @@ def calculate_metric_percase_PGDM(pred, gt):
         return 1, 1, 0, 
     else:
         return 0, 0, 0
+    
+    
+def calculate_metric_percase_LiTS(pred, gt):
+    pred[pred > 0] = 1
+    gt[gt > 0] = 1
+    if pred.sum() > 0 and gt.sum()>0:
+        miou = metric.binary.jc(pred,gt)
+        dice = metric.binary.dc(pred, gt)
+        hd95 = metric.binary.hd95(pred, gt)
+        return miou,dice,hd95
+    elif pred.sum() > 0 and gt.sum()==0:
+        return 1, 1, 0, 
+    else:
+        return 0, 0, 0
 
 
 def test_single_volume(image, label, net, device, classes, patch_size=[256, 256], test_save_path=None, case=None, z_spacing=1):
@@ -295,9 +309,54 @@ def test_single_volume_PDGM(image, label, net, device, classes, patch_size=[256,
     if test_save_path is not None:
         prd_itk = sitk.GetImageFromArray(prediction.astype(np.float32))
         lab_itk = sitk.GetImageFromArray(label.astype(np.float32))
-        for i in range(image.shape[-1]):
-            img_itk = sitk.GetImageFromArray(image[:,:,:,i].astype(np.float32))
-            sitk.WriteImage(img_itk, test_save_path + '/'+ case + f"_img{i}.nii.gz")
+        # for i in range(image.shape[-1]):
+        #     img_itk = sitk.GetImageFromArray(image[:,:,:,i].astype(np.float32))
+        #     sitk.WriteImage(img_itk, test_save_path + '/'+ case + f"_img{i}.nii.gz")
+        
+        sitk.WriteImage(prd_itk, test_save_path + '/'+case + "_pred.nii.gz")
+        sitk.WriteImage(lab_itk, test_save_path + '/'+ case + "_gt.nii.gz")
+    return metric_list
+
+
+def test_single_volume_LiTS(image, label, net, device, classes, patch_size=[256, 256], test_save_path=None, case=None, z_spacing=1):
+    image, label = image.squeeze(0).cpu().detach().numpy(), label.squeeze(0).cpu().detach().numpy()
+    if len(image.shape) == 3: # N H W
+        prediction = np.zeros_like(label)
+        for ind in range(image.shape[0]): # for each slice
+            img = image[ind, :, :]
+            h, w = img.shape[0], img.shape[1]
+            if h != patch_size[0] or w != patch_size[1]:
+                img = zoom(img, (patch_size[0] / h, patch_size[1] / w), order=3)  # previous using 0
+            x_transforms = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize([0.5], [0.5])
+            ])
+            x = x_transforms(img).unsqueeze(0).float().to(device) # type: ignore
+
+            net.eval()
+            with torch.no_grad():
+                y_ = net(x)
+                # outputs = F.interpolate(outputs, size=img.shape[:], mode='bilinear', align_corners=False)
+                out = torch.argmax(torch.softmax(y_, dim=1), dim=1).squeeze(0)
+                out = out.cpu().detach().numpy()
+                if h != patch_size[0] or w != patch_size[1]:
+                    pred = zoom(out, (h / patch_size[0], w / patch_size[1]), order=0)
+                else:
+                    pred = out
+                prediction[ind] = pred
+    else:
+        x = torch.from_numpy(image).unsqueeze(0).unsqueeze(0).float().to(device)
+        net.eval()
+        with torch.no_grad():
+            out = torch.argmax(torch.softmax(net(x), dim=1), dim=1).squeeze(0)
+            prediction = out.cpu().detach().numpy()
+    metric_list = []
+    for i in range(1, classes):
+        metric_list.append(calculate_metric_percase_LiTS(prediction == i, label == i))
+
+    if test_save_path is not None:
+        prd_itk = sitk.GetImageFromArray(prediction.astype(np.float32))
+        lab_itk = sitk.GetImageFromArray(label.astype(np.float32))
         
         sitk.WriteImage(prd_itk, test_save_path + '/'+case + "_pred.nii.gz")
         sitk.WriteImage(lab_itk, test_save_path + '/'+ case + "_gt.nii.gz")

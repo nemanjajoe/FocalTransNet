@@ -11,9 +11,9 @@ NCLS=4
 config_PDGM= {
   'describe'  : "PDGM dataset", 
   'save_path' : os.path.join(save_dir,'PDGM'),
-  'dataset_path': os.path.join(data_dir,'PDGM'),
+  'dataset_path': os.path.join(data_dir,'PDGM_5_fold'),
   'device'    : 'cuda:0' if torch.cuda.is_available() else 'cpu',
-  'epoch_num' : 20,
+  'epoch_num' : 3,
   'num_classes': NCLS,
   'pretrained_params' : None,
   'model'     : FocalTransNet,
@@ -32,6 +32,7 @@ config_PDGM= {
   'n_gpu': 1,
   'grad_clipping': False,
 }
+
 
 NCLS=9
 config_synapse= {

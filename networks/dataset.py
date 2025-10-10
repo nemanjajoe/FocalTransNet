@@ -330,11 +330,21 @@ class Synapse_dataset(Dataset):
         return sample
 
 class PDGM_dataset(Dataset):
-    def __init__(self, base_dir, list_dir, split, img_size, norm_x_transform=None, norm_y_transform=None,shuffle=True, test_mode=False):
+    def __init__(self, base_dir, mode, img_size, data_list,
+                 norm_x_transform=None, norm_y_transform=None,shuffle=True, test_mode=False):
         self.norm_x_transform = norm_x_transform
         self.norm_y_transform = norm_y_transform
-        self.split = split
-        self.sample_list = open(os.path.join(list_dir, self.split+'.txt')).readlines()
+        self.mode = mode
+        if mode == 'train':
+            self.sample_list = []
+            for data_name in data_list:
+                self.sample_list += [os.path.join(base_dir,'data',data_name,slice_name) for slice_name in os.listdir(
+                    os.path.join(base_dir,'data',data_name)
+                )]
+            random.shuffle(self.sample_list)
+        
+        else:
+            self.sample_list = data_list
         
         if test_mode:
             self.sample_list = self.sample_list[:int(len(self.sample_list)*0.1)]
@@ -342,10 +352,10 @@ class PDGM_dataset(Dataset):
         if shuffle:
             random.shuffle(self.sample_list)
 
-        self.data_dir = base_dir
+        self.base_dir = base_dir
         self.img_size = img_size
 
-        self.img_aug = iaa.SomeOf((0,1),[
+        self.img_aug = iaa.SomeOf((0,2),[
             iaa.Flipud(0.5, name="Flipud"),
             iaa.Fliplr(0.5, name="Fliplr"), # type: ignore
             iaa.AdditiveGaussianNoise(scale=0.005 * 255),
@@ -362,18 +372,32 @@ class PDGM_dataset(Dataset):
         return len(self.sample_list)
 
     def __getitem__(self, idx):
-        if self.split == "train":
-            slice_name = self.sample_list[idx].strip('\n')
-            data_path = os.path.join(self.data_dir, slice_name+'.npz')
-            data = np.load(data_path)
-            image, label = data['image'], data['label']
+        if self.mode == "train":
+            slice_path = self.sample_list[idx]
+            # data_path = os.path.join(self.base_dir, slice_name+'.npz')
+            data = np.load(slice_path)
+            image, label = data['image'], data['label'] # h w c
+            # _,_,C = image.shape   
+            # image = image[:,:,np.random.permutation(C)]
+            
             image,label = augment_seg(self.img_aug, image, label)
 
         else:
-            vol_name = self.sample_list[idx].strip('\n')
-            filepath = self.data_dir + "/{}.npy.h5".format(vol_name)
-            data = h5py.File(filepath)
-            image, label = data['image'], data['label'] # type: ignore
+            vol_name = self.sample_list[idx]
+            
+            image = []
+            label = []
+            slice_dir = os.path.join(self.base_dir,'data',vol_name)
+            for slice_name in os.listdir(slice_dir):
+                
+                data = np.load(os.path.join(slice_dir,slice_name))
+                x,y = data['image'], data['label'] # h w c
+                image.append(x)
+                label.append(y)
+            
+            image = np.asarray(image)
+            label = np.asarray(label)
+            # N,H,W,C = image.shape
         
         sample = {'image': np.float32(image), 'label': np.float32(label)}
         if self.norm_x_transform is not None:
@@ -382,6 +406,57 @@ class PDGM_dataset(Dataset):
             sample['label'] = self.norm_y_transform(sample['label'].copy())
 
         sample['case_name'] = self.sample_list[idx].strip('\n')
+        return sample
+    
+    
+class LiTS_dataset(Dataset):
+    def __init__(self, data_dir, mode, img_size, norm_x_transform=None, norm_y_transform=None,shuffle=True):
+        self.norm_x_transform = norm_x_transform
+        self.norm_y_transform = norm_y_transform
+        self.mode = mode
+        
+        self.sample_list = open(os.path.join(data_dir,f'{mode}.txt')).readlines()
+
+        if shuffle:
+            random.shuffle(self.sample_list)
+
+        self.data_dir = data_dir
+        self.img_size = img_size
+
+        self.img_aug = iaa.SomeOf((0,2),[
+            iaa.Flipud(0.5, name="Flipud"),
+            iaa.Fliplr(0.5, name="Fliplr"), # type: ignore
+            iaa.AdditiveGaussianNoise(scale=0.005 * 255),
+            iaa.GaussianBlur(sigma=(1.0)),
+            iaa.LinearContrast((0.5, 1.5), per_channel=0.5), # type: ignore
+            iaa.Affine(scale={"x": (0.5, 2), "y": (0.5, 2)}),
+            iaa.Affine(rotate=(-40, 40)),
+            iaa.Affine(shear=(-16, 16)),
+            iaa.PiecewiseAffine(scale=(0.008, 0.03)),
+            iaa.Affine(translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)})
+        ], random_order=True)
+
+    def __len__(self):
+        return len(self.sample_list)
+
+    def __getitem__(self, idx):
+        
+        sample_name = self.sample_list[idx].strip('\n')
+        
+        data_path = os.path.join(self.data_dir, sample_name)
+        data = np.load(data_path)
+        image, label = data['image'], data['label']
+        
+        if self.mode == "train":
+            image,label = augment_seg(self.img_aug, image, label)
+        
+        sample = {'image': np.float32(image), 'label': np.float32(label)}
+        if self.norm_x_transform is not None:
+            sample['image'] = self.norm_x_transform(sample['image'].copy())
+        if self.norm_y_transform is not None:
+            sample['label'] = self.norm_y_transform(sample['label'].copy())
+
+        sample['case_name'] = os.path.split(sample_name)[-1].strip('.npz')
         return sample
     
 
