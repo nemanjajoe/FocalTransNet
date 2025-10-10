@@ -15,8 +15,8 @@
 
 **FocalTransNet** is a hybrid CNN–Transformer segmentation network designed for high-precision medical image segmentation. It features:
 
-* **Focal-Enhanced (FE) Transformer**: a dual-path module that fuses global self-attention and local convolution with dense cross-connections for stronger interaction between global context and fine details.
-* **Symmetric Patch Merging (SPM)**: a downsampling module with an information-compensation mechanism to better preserve high-frequency details (edges, thin structures) during multi-scale encoding.
+* **Focal-Enhanced (FE) Transformer**: a dual-path module that fuses global self-attention and local convolution with dense cross-connections.
+* **Symmetric Patch Merging (SPM)**: a downsampling module with an information-compensation mechanism to preserve fine-grained details (edges, thin structures) during downsampling.
 * **Cascaded decoder** with Attention Gates (AG) + Convolutional Attention Module (CAM).
 
 ---
