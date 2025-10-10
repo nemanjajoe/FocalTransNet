@@ -19,7 +19,9 @@
 
 <br>
 
-
+<p align="center">
+  <img src="figs\Innovations.png" width="100%" alt="FocalTransNet overview">
+</p>
 
 ---
 
